@@ -5,26 +5,27 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/KaitoMizukami/todo-app/models"
 	"github.com/KaitoMizukami/todo-app/service"
 	"github.com/go-chi/chi/v5"
 )
 
-type UserHandler struct {
+type TodoHandler struct {
 	ts service.TodoService
 }
 
-func NewUserHandler(ts service.TodoService) *UserHandler {
-	return &UserHandler{
+func NewTodoHandler(ts service.TodoService) *TodoHandler {
+	return &TodoHandler{
 		ts: ts,
 	}
 }
 
-func (uh *UserHandler) GetAllTodo(w http.ResponseWriter, r *http.Request) {
-	todos := uh.ts.GetTodos()
+func (th *TodoHandler) GetAllTodo(w http.ResponseWriter, r *http.Request) {
+	todos := th.ts.GetTodos()
 	json.NewEncoder(w).Encode(todos)
 }
 
-func (uh *UserHandler) GetTodoById(w http.ResponseWriter, r *http.Request) {
+func (th *TodoHandler) GetTodoById(w http.ResponseWriter, r *http.Request) {
 	strId := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(strId)
 	if err != nil {
@@ -32,7 +33,37 @@ func (uh *UserHandler) GetTodoById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todo, err := uh.ts.GetTodoByID(id)
+	todo, err := th.ts.GetTodoByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(todo)
+}
+
+func (th *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
+	var reqTodo models.Todo
+	json.NewDecoder(r.Body).Decode(&reqTodo)
+
+	newTodo, err := th.ts.CreateTodo(reqTodo.Title)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(newTodo)
+}
+
+func (th *TodoHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
+	strId := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(strId)
+	if err != nil {
+		http.Error(w, "id should be integer", http.StatusBadRequest)
+		return
+	}
+
+	todo, err := th.ts.UpdateStatus(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
